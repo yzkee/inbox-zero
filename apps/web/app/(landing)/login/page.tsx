@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { LoginForm } from "@/app/(landing)/login/LoginForm";
 import { getRequiresReconsentDescription } from "@/app/(landing)/login/messages";
+import { env } from "@/env";
 import { auth } from "@/utils/auth";
 import { isGoogleOauthEmulationEnabled } from "@/utils/google/oauth";
+import { hasMicrosoftOauthConfig } from "@/utils/oauth/provider-config";
 import { AlertBasic } from "@/components/Alert";
 import { Button } from "@/components/ui/button";
 import { WELCOME_PATH } from "@/utils/config";
@@ -49,6 +51,8 @@ export default async function AuthenticationPage(props: {
           <Suspense>
             <LoginForm
               useGoogleOauthEmulator={isGoogleOauthEmulationEnabled()}
+              showMicrosoftLogin={hasMicrosoftOauthConfig()}
+              showSsoLogin={env.SSO_LOGIN_ENABLED}
             />
           </Suspense>
         </div>

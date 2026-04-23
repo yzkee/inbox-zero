@@ -257,6 +257,7 @@ const parsedEnv = createEnv({
     APP_REVIEW_DEMO_ENABLED: booleanString.optional().default(false),
     APP_REVIEW_DEMO_CODE: z.string().optional(),
     APP_REVIEW_DEMO_EMAIL: z.string().email().optional(),
+    SSO_LOGIN_ENABLED: booleanString.optional().default(false),
   },
   client: {
     // stripe
