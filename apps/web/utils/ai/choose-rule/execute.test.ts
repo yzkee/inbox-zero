@@ -79,7 +79,7 @@ describe("executeAct", () => {
       actionItems: [{ id: "action-1", type: ActionType.NOTIFY_SENDER }],
     } as any;
 
-    await executeAct({
+    const result = await executeAct({
       client: mockClient,
       executedRule,
       message,
@@ -87,6 +87,7 @@ describe("executeAct", () => {
       logger,
     });
 
+    expect(result).toBe(ExecutedRuleStatus.ERROR);
     expect(mockExecutedRuleUpdate).toHaveBeenCalledTimes(1);
     expect(mockExecutedRuleUpdate).toHaveBeenCalledWith({
       where: { id: "executed-rule-1" },
@@ -106,7 +107,7 @@ describe("executeAct", () => {
       actionItems: [{ id: "action-1", type: ActionType.NOTIFY_SENDER }],
     } as any;
 
-    await executeAct({
+    const result = await executeAct({
       client: mockClient,
       executedRule,
       message,
@@ -114,7 +115,33 @@ describe("executeAct", () => {
       logger,
     });
 
+    expect(result).toBe(ExecutedRuleStatus.APPLIED);
     expect(mockExecutedRuleUpdate).toHaveBeenCalledTimes(1);
+    expect(mockExecutedRuleUpdate).toHaveBeenCalledWith({
+      where: { id: "executed-rule-1" },
+      data: { status: ExecutedRuleStatus.APPLIED },
+    });
+  });
+
+  it("does not report APPLIED when persisting the final status fails", async () => {
+    mockRunActionFunction.mockResolvedValueOnce({ success: true });
+    mockExecutedRuleUpdate.mockRejectedValueOnce(new Error("db unavailable"));
+
+    const executedRule = {
+      ...baseExecutedRule,
+      actionItems: [{ id: "action-1", type: ActionType.NOTIFY_SENDER }],
+    } as any;
+
+    await expect(
+      executeAct({
+        client: mockClient,
+        executedRule,
+        message,
+        emailAccount,
+        logger,
+      }),
+    ).rejects.toThrow("db unavailable");
+
     expect(mockExecutedRuleUpdate).toHaveBeenCalledWith({
       where: { id: "executed-rule-1" },
       data: { status: ExecutedRuleStatus.APPLIED },

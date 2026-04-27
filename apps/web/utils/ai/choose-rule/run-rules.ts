@@ -50,7 +50,10 @@ import {
   getBlockedLowTrustStaticFromActionTypes,
   LOW_TRUST_STATIC_FROM_OUTBOUND_MESSAGE,
 } from "@/utils/rule/static-from-risk";
-import { isDraftReplyActionType } from "@/utils/actions/draft-reply";
+import {
+  isDraftReplyActionType,
+  isMessagingChannelActionType,
+} from "@/utils/actions/draft-reply";
 
 const MODULE = "ai/choose-rule";
 
@@ -401,6 +404,11 @@ async function executeMatchedRule(
     );
   }
 
+  actionItems = removeUnconfiguredMessagingChannelActions({
+    actionItems,
+    logger,
+  });
+
   if (actionItems.length === 0 && blockedActionTypes.length) {
     const reasonToUse = reason
       ? `${reason}. ${LOW_TRUST_STATIC_FROM_OUTBOUND_MESSAGE}`
@@ -542,6 +550,8 @@ async function executeMatchedRule(
     ]);
   }
 
+  let finalStatus: ExecutedRuleStatus | undefined;
+
   if (executedRule) {
     if (delayedActions?.length > 0) {
       // Cancels existing scheduled actions to avoid duplicates
@@ -563,7 +573,7 @@ async function executeMatchedRule(
 
     // Execute immediate actions if any
     if (immediateActions?.length > 0) {
-      await executeAct({
+      finalStatus = await executeAct({
         client,
         emailAccount: {
           email: emailAccount.email,
@@ -584,6 +594,7 @@ async function executeMatchedRule(
           }),
         { logger },
       );
+      finalStatus = ExecutedRuleStatus.APPLIED;
     }
   }
 
@@ -595,8 +606,29 @@ async function executeMatchedRule(
     executedRule,
     reason,
     matchReasons,
+    status: finalStatus,
     createdAt: batchTimestamp,
   };
+}
+
+function removeUnconfiguredMessagingChannelActions<
+  TAction extends {
+    id: string;
+    type: ActionType;
+    messagingChannelId?: string | null;
+  },
+>({ actionItems, logger }: { actionItems: TAction[]; logger: Logger }) {
+  return actionItems.filter((action) => {
+    if (!isMessagingChannelActionType(action.type)) return true;
+    if (action.messagingChannelId?.trim()) return true;
+
+    logger.warn("Skipping messaging channel action without channel", {
+      actionId: action.id,
+      actionType: action.type,
+    });
+
+    return false;
+  });
 }
 
 async function analyzeSenderPatternIfAiMatch({
